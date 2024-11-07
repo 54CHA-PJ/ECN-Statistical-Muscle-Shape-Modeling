@@ -3,24 +3,26 @@ import glob
 import subprocess
 import shapeworks as sw
 from pathlib import Path
+import numpy as np
+import time
 
 def Run_Pipeline(args):
+    
+    start_time = time.time()    
+    
     print("\nStep 1. Acquire Data\n")
     
     """
     Step 1: ACQUIRE DATA
-    Load the shapes from the MUSCLES dataset instead of downloading the toy dataset.
     """
     dataset_name = "FULGUR"
-    data_path = "./CODE/DATA/label4/"
-    shape_ext = '.nii.gz'  # Working with .nii.gz files instead of .nrrd
-    output_directory = "OUTPUT/LABEL4/"
+    data_path = "./CODE/DATA/RF_FULGUR_SAMPLE/"
+    shape_ext = '.nii.gz'
+    output_directory = "./CODE/OUTPUT/RF_FULGUR_SAMPLE/"
     
-    # Create output directory
     if not os.path.exists(output_directory):
         os.makedirs(output_directory)
 
-    # Load the .nii.gz files
     shape_filenames = sorted(glob.glob(data_path + '*' + shape_ext))
     print('Number of shapes: ' + str(len(shape_filenames)))
     print('Shape files found:')
@@ -29,13 +31,12 @@ def Run_Pipeline(args):
 
     print("\nStep 2. Groom - Data Pre-processing\n")
     """
-    Step 2: GROOM - Pre-processing MUSCLES shapes
+    Step 2: GROOM - Pre-processing shapes
     """
     groom_dir = output_directory + 'groomed/'
     if not os.path.exists(groom_dir):
         os.makedirs(groom_dir)
 
-    # Initialize lists for segmentations and names
     shape_seg_list = []
     shape_names = []
 
@@ -49,6 +50,8 @@ def Run_Pipeline(args):
         shape_seg_list.append(shape_seg)
 
         print("Grooming: " + shape_name)
+            
+        
         iso_value = 0.5
         bounding_box = sw.ImageUtils.boundingBox([shape_seg], iso_value).pad(2)
         shape_seg.crop(bounding_box)
@@ -58,6 +61,11 @@ def Run_Pipeline(args):
         pad_size = 5
         pad_value = 0
         shape_seg.pad(pad_size, pad_value)
+        
+    print("\nStep 3. Groom - Rigid Transformations\n")
+    """
+    Step 3: GROOM - Rigid Transformations
+    """
     
     ref_index = sw.find_reference_image_index(shape_seg_list)
     ref_seg = shape_seg_list[ref_index].write(groom_dir + 'reference.nii.gz')
@@ -73,6 +81,14 @@ def Run_Pipeline(args):
             ref_seg, iso_value, icp_iterations)
         rigid_transform = sw.utils.getVTKtransform(rigid_transform)
         rigid_transforms.append(rigid_transform) 
+        
+        # Save the rigid transform matrix to file
+        transform_matrix = np.array(rigid_transform.GetMatrix())
+        transform_filename = groom_dir + 'rigid_transforms/' + shape_name + '_to_' + ref_name + '_transform.txt'
+        if not os.path.exists(groom_dir + 'rigid_transforms/'):
+            os.makedirs(groom_dir + 'rigid_transforms/')
+        np.savetxt(transform_filename, transform_matrix)
+        print('Saved rigid transform matrix to ' + transform_filename)
 
         print("Converting " + shape_name + " to distance transform")
         shape_seg.antialias(antialias_iterations).computeDT(0).gaussianBlur(1.5)
@@ -82,9 +98,9 @@ def Run_Pipeline(args):
     # Adjust the input for mesh creation
     domain_type, groomed_files = sw.data.get_optimize_input(groomed_files, args.mesh_mode)
 
-    print("\nStep 3. Optimize - Particle Based Optimization\n")
+    print("\nStep 4. Optimize - Particle Based Optimization\n")
     """
-    Step 3: OPTIMIZE - Particle Based Optimization
+    Step 4: OPTIMIZE - Particle Based Optimization
     """
     project_location = output_directory
     if not os.path.exists(project_location):
@@ -144,8 +160,14 @@ def Run_Pipeline(args):
     subprocess.check_call(optimize_cmd)
 
     sw.utils.check_results(args, spreadsheet_file)
+    
+    end_time = time.time()
+    total_time = end_time - start_time
+    minutes, seconds = divmod(total_time, 60)
+    print("Total time: {} minutes {:.2f} seconds".format(int(minutes), seconds))
 
-    print("\nStep 4: Analysis - Launch ShapeWorksStudio")
+    print("\nStep 5: Analysis - Launch ShapeWorksStudio")
+    
     analyze_cmd = ('ShapeWorksStudio ' + spreadsheet_file).split()
     subprocess.check_call(analyze_cmd)
 
