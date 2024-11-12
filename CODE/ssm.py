@@ -16,9 +16,9 @@ def Run_Pipeline(args):
     Step 1: ACQUIRE DATA
     """
     dataset_name = "FULGUR"
-    data_path = "./CODE/DATA/RF_FULGUR_SAMPLE/"
+    data_path = "./CODE/DATA/RF_FULGUR/"
     shape_ext = '.nii.gz'
-    output_directory = "./CODE/OUTPUT/RF_FULGUR_SAMPLE/"
+    output_directory = "./CODE/OUTPUT/RF_FULGUR_TEST_SCALED/"
     
     if not os.path.exists(output_directory):
         os.makedirs(output_directory)
@@ -50,7 +50,6 @@ def Run_Pipeline(args):
         shape_seg_list.append(shape_seg)
 
         print("Grooming: " + shape_name)
-            
         
         iso_value = 0.5
         bounding_box = sw.ImageUtils.boundingBox([shape_seg], iso_value).pad(2)
@@ -71,28 +70,34 @@ def Run_Pipeline(args):
     ref_seg = shape_seg_list[ref_index].write(groom_dir + 'reference.nii.gz')
     ref_name = shape_names[ref_index]
     print("Reference found: " + ref_name)
+    
+    # Construct the directory and filename using os.path.join
+    transform_dir = os.path.join(groom_dir, 'rigid_transforms')
+    if not os.path.exists(transform_dir):
+        os.makedirs(transform_dir)
 
     rigid_transforms = []
     for shape_seg, shape_name in zip(shape_seg_list, shape_names):
-        print('Finding alignment transform from ' + shape_name + ' to ' + ref_name)
         iso_value = 0.5
         icp_iterations = 100
         rigid_transform = shape_seg.createRigidRegistrationTransform(
             ref_seg, iso_value, icp_iterations)
-        rigid_transform = sw.utils.getVTKtransform(rigid_transform)
-        rigid_transforms.append(rigid_transform) 
+        rigid_transforms.append(rigid_transform)
+
+        # Ensure shape_name and ref_name are valid by using os.path.basename
+        shape_base_name = os.path.basename(shape_name)
+        ref_base_name = os.path.basename(ref_name)
+
+        # Save the transform matrix
+        transform_filename = os.path.join(transform_dir, f'{shape_base_name}_to_{ref_base_name}_transform.txt')
+        np.savetxt(transform_filename, rigid_transform)
         
-        # Save the rigid transform matrix to file
-        transform_matrix = np.array(rigid_transform.GetMatrix())
-        transform_filename = groom_dir + 'rigid_transforms/' + shape_name + '_to_' + ref_name + '_transform.txt'
-        if not os.path.exists(groom_dir + 'rigid_transforms/'):
-            os.makedirs(groom_dir + 'rigid_transforms/')
-        np.savetxt(transform_filename, transform_matrix)
-        print('Saved rigid transform matrix to ' + transform_filename)
-
         print("Converting " + shape_name + " to distance transform")
+        
         shape_seg.antialias(antialias_iterations).computeDT(0).gaussianBlur(1.5)
-
+        
+    
+    print("Saving distance transforms..")
     groomed_files = sw.utils.save_images(groom_dir + 'distance_transforms/', shape_seg_list, shape_names, extension='nii.gz', compressed=True, verbose=True)
 
     # Adjust the input for mesh creation
@@ -136,7 +141,7 @@ def Run_Pipeline(args):
         "relative_weighting": 1,
         "initial_relative_weighting": 0.05,
         "procrustes_interval": 0,
-        "procrustes_scaling": 0,
+        "procrustes_scaling": 1,
         "save_init_splits": 0,
         "verbosity": 0
     }
