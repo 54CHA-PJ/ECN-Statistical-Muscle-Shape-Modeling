@@ -12,16 +12,17 @@ def Run_Pipeline(args):
     
     print("\nStep 1. Acquire Data\n")
     
-    """
-    Step 1: ACQUIRE DATA
-    """
-    dataset_name = "FULGUR"
-    data_path = "./CODE/DATA/RF_FULGUR/"
-    shape_ext = '.nii.gz'
-    output_directory = "./CODE/OUTPUT/RF_FULGUR_TEST_SCALED/"
+    # -----------------------------------------------------------------------
+    # Step 1: ACQUIRE DATA
+    # -----------------------------------------------------------------------
     
-    if not os.path.exists(output_directory):
-        os.makedirs(output_directory)
+    dataset_name = "RF_FULGUR_SAMPLE"
+    data_path = "./CODE/DATA/" + dataset_name + "/"
+    output_path = "./CODE/OUTPUT/"  + dataset_name + "/"
+    shape_ext = '.nii.gz'
+
+    if not os.path.exists(output_path):
+        os.makedirs(output_path)
 
     shape_filenames = sorted(glob.glob(data_path + '*' + shape_ext))
     print('Number of shapes: ' + str(len(shape_filenames)))
@@ -30,10 +31,12 @@ def Run_Pipeline(args):
         print(Path(shape_filename).name)
 
     print("\nStep 2. Groom - Data Pre-processing\n")
-    """
-    Step 2: GROOM - Pre-processing shapes
-    """
-    groom_dir = output_directory + 'groomed/'
+    
+    # -----------------------------------------------------------------------
+    # Step 2: GROOM - Pre-processing shapes
+    # -----------------------------------------------------------------------
+
+    groom_dir = output_path + 'groomed/'
     if not os.path.exists(groom_dir):
         os.makedirs(groom_dir)
 
@@ -62,10 +65,11 @@ def Run_Pipeline(args):
         shape_seg.pad(pad_size, pad_value)
         
     print("\nStep 3. Groom - Rigid Transformations\n")
-    """
-    Step 3: GROOM - Rigid Transformations
-    """
     
+    # -----------------------------------------------------------------------
+    # Step 3: GROOM - Rigid Transformations
+    # -----------------------------------------------------------------------
+
     ref_index = sw.find_reference_image_index(shape_seg_list)
     ref_seg = shape_seg_list[ref_index].write(groom_dir + 'reference.nii.gz')
     ref_name = shape_names[ref_index]
@@ -104,10 +108,12 @@ def Run_Pipeline(args):
     domain_type, groomed_files = sw.data.get_optimize_input(groomed_files, args.mesh_mode)
 
     print("\nStep 4. Optimize - Particle Based Optimization\n")
-    """
-    Step 4: OPTIMIZE - Particle Based Optimization
-    """
-    project_location = output_directory
+        
+    # -----------------------------------------------------------------------
+    # Step 4: OPTIMIZE - Particle Based Optimization
+    # -----------------------------------------------------------------------
+
+    project_location = output_path
     if not os.path.exists(project_location):
         os.makedirs(project_location)
     
@@ -158,7 +164,7 @@ def Run_Pipeline(args):
         parameters.set(key, sw.Variant([parameter_dictionary[key]]))
     
     project.set_parameters("optimize", parameters)
-    spreadsheet_file = output_directory + dataset_name + "_" + args.option_set + ".swproj"
+    spreadsheet_file = output_path + dataset_name + "_" + args.option_set + ".swproj"
     project.save(spreadsheet_file)
 
     optimize_cmd = ('shapeworks optimize --progress --name ' + spreadsheet_file).split()
@@ -171,7 +177,9 @@ def Run_Pipeline(args):
     minutes, seconds = divmod(total_time, 60)
     print("Total time: {} minutes {:.2f} seconds".format(int(minutes), seconds))
 
-    print("\nStep 5: Analysis - Launch ShapeWorksStudio")
+    # -----------------------------------------------------------------------
+    # Step 5: Open ShapeWorks
+    # -----------------------------------------------------------------------
     
     analyze_cmd = ('ShapeWorksStudio ' + spreadsheet_file).split()
     subprocess.check_call(analyze_cmd)
