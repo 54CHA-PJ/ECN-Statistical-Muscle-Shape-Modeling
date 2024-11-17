@@ -5,17 +5,17 @@ import shapeworks as sw
 from pathlib import Path
 import numpy as np
 import time
+from tqdm import tqdm
 
 def Run_Pipeline(args):
     
     start_time = time.time()    
     
-    print("\nStep 1. Acquire Data\n")
-    
     # -----------------------------------------------------------------------
     # Step 1: ACQUIRE DATA
     # -----------------------------------------------------------------------
-    
+    print("\nStep 1. Acquire Data\n")
+
     dataset_name = "RF_FULGUR_SAMPLE"
     data_path = "./CODE/DATA/" + dataset_name + "/"
     output_path = "./CODE/OUTPUT/"  + dataset_name + "/"
@@ -24,36 +24,38 @@ def Run_Pipeline(args):
     if not os.path.exists(output_path):
         os.makedirs(output_path)
 
+
+    # Load the .nii.gz files
     shape_filenames = sorted(glob.glob(data_path + '*' + shape_ext))
     print('Number of shapes: ' + str(len(shape_filenames)))
+    """     
     print('Shape files found:')
     for shape_filename in shape_filenames:
         print(Path(shape_filename).name)
-
-    print("\nStep 2. Groom - Data Pre-processing\n")
+    """
     
     # -----------------------------------------------------------------------
     # Step 2: GROOM - Pre-processing shapes
     # -----------------------------------------------------------------------
+    print("\nStep 2. Groom - Data Pre-processing\n")
 
     groom_dir = output_path + 'groomed/'
     if not os.path.exists(groom_dir):
         os.makedirs(groom_dir)
 
+    # Initialize lists for segmentations and names
     shape_seg_list = []
     shape_names = []
 
     # Load the segmentations and perform grooming steps
-    for shape_filename in shape_filenames:
-        print('Loading: ' + shape_filename)
+    for shape_filename in tqdm(shape_filenames, desc="Loading and Grooming Shapes"):
+
         shape_name = shape_filename.split('/')[-1].replace(shape_ext, '')
         shape_names.append(shape_name)
         
         shape_seg = sw.Image(shape_filename)
         shape_seg_list.append(shape_seg)
 
-        print("Grooming: " + shape_name)
-        
         iso_value = 0.5
         bounding_box = sw.ImageUtils.boundingBox([shape_seg], iso_value).pad(2)
         shape_seg.crop(bounding_box)
@@ -64,12 +66,12 @@ def Run_Pipeline(args):
         pad_value = 0
         shape_seg.pad(pad_size, pad_value)
         
-    print("\nStep 3. Groom - Rigid Transformations\n")
-    
     # -----------------------------------------------------------------------
     # Step 3: GROOM - Rigid Transformations
     # -----------------------------------------------------------------------
+    print("\nStep 3. Groom - Rigid Transformations\n")
 
+    print("Finding reference image...")
     ref_index = sw.find_reference_image_index(shape_seg_list)
     ref_seg = shape_seg_list[ref_index].write(groom_dir + 'reference.nii.gz')
     ref_name = shape_names[ref_index]
@@ -81,13 +83,14 @@ def Run_Pipeline(args):
         os.makedirs(transform_dir)
 
     rigid_transforms = []
-    for shape_seg, shape_name in zip(shape_seg_list, shape_names):
+    for shape_seg, shape_name in tqdm(zip(shape_seg_list, shape_names), desc="Finding Alignment Transforms", total=len(shape_seg_list)):
         iso_value = 0.5
         icp_iterations = 100
         rigid_transform = shape_seg.createRigidRegistrationTransform(
             ref_seg, iso_value, icp_iterations)
-        rigid_transforms.append(rigid_transform)
-
+        rigid_transform = sw.utils.getVTKtransform(rigid_transform)
+        rigid_transforms.append(rigid_transform) 
+        
         # Ensure shape_name and ref_name are valid by using os.path.basename
         shape_base_name = os.path.basename(shape_name)
         ref_base_name = os.path.basename(ref_name)
@@ -95,14 +98,18 @@ def Run_Pipeline(args):
         # Save the transform matrix
         transform_filename = os.path.join(transform_dir, f'{shape_base_name}_to_{ref_base_name}_transform.txt')
         np.savetxt(transform_filename, rigid_transform)
-        
-        print("Converting " + shape_name + " to distance transform")
-        
+                
         shape_seg.antialias(antialias_iterations).computeDT(0).gaussianBlur(1.5)
-        
     
     print("Saving distance transforms..")
-    groomed_files = sw.utils.save_images(groom_dir + 'distance_transforms/', shape_seg_list, shape_names, extension='nii.gz', compressed=True, verbose=True)
+    groomed_files = sw.utils.save_images(
+        groom_dir + 'distance_transforms/', 
+        shape_seg_list, 
+        shape_names, 
+        extension='nii.gz', 
+        compressed=True, 
+        verbose=False
+        )
 
     # Adjust the input for mesh creation
     domain_type, groomed_files = sw.data.get_optimize_input(groomed_files, args.mesh_mode)
@@ -119,7 +126,7 @@ def Run_Pipeline(args):
     
     subjects = []
     number_domains = 1
-    for i in range(len(shape_seg_list)):
+    for i in tqdm(range(len(shape_seg_list)), desc="Setting Up Subjects"):
         subject = sw.Subject()
         subject.set_number_of_domains(number_domains)
         rel_seg_files = sw.utils.get_relative_paths([os.getcwd() + '/' + shape_filenames[i]], project_location)
@@ -147,7 +154,7 @@ def Run_Pipeline(args):
         "relative_weighting": 1,
         "initial_relative_weighting": 0.05,
         "procrustes_interval": 0,
-        "procrustes_scaling": 1,
+        "procrustes_scaling": 0,
         "save_init_splits": 0,
         "verbosity": 0
     }
@@ -180,6 +187,7 @@ def Run_Pipeline(args):
     # -----------------------------------------------------------------------
     # Step 5: Open ShapeWorks
     # -----------------------------------------------------------------------
+    print("\nStep 5: Analysis - Launch ShapeWorksStudio")
     
     analyze_cmd = ('ShapeWorksStudio ' + spreadsheet_file).split()
     subprocess.check_call(analyze_cmd)
