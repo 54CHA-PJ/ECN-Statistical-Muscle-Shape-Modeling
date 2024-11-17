@@ -8,38 +8,44 @@ import time
 from tqdm import tqdm
 
 def Run_Pipeline(args):
-    
+
     start_time = time.time()    
-    
+
     # -----------------------------------------------------------------------
     # Step 1: ACQUIRE DATA
     # -----------------------------------------------------------------------
-    print("\nStep 1. Acquire Data\n")
+    print("\n----------------------------------------")
+    print("Step 1. Acquire Data\n")
 
-    dataset_name = "RF_FULGUR_SAMPLE"
-    data_path = "./CODE/DATA/" + dataset_name + "/"
-    output_path = "./CODE/OUTPUT/"  + dataset_name + "/"
+    dataset_name = "RF_FULGUR_ALL"
+    dataset_paths = [
+        ('./CODE/DATA/RF_FULGUR', 'RF'),
+        ('./CODE/DATA/RF_FULGUR_PRED', 'RFP'),
+    ]
+    output_path = os.path.abspath(os.path.join("./CODE/OUTPUT/", dataset_name))
     shape_ext = '.nii.gz'
 
     if not os.path.exists(output_path):
         os.makedirs(output_path)
 
-
     # Load the .nii.gz files
-    shape_filenames = sorted(glob.glob(data_path + '*' + shape_ext))
+    shape_filenames = []  # List of filenames
+    dataset_ids = []      # Corresponding dataset identifiers
+
+    for data_path, dataset_id in dataset_paths:
+        files = sorted(glob.glob(os.path.join(data_path, '*' + shape_ext)))
+        shape_filenames.extend(files)
+        dataset_ids.extend([dataset_id]*len(files))
+
     print('Number of shapes: ' + str(len(shape_filenames)))
-    """     
-    print('Shape files found:')
-    for shape_filename in shape_filenames:
-        print(Path(shape_filename).name)
-    """
-    
+
     # -----------------------------------------------------------------------
     # Step 2: GROOM - Pre-processing shapes
     # -----------------------------------------------------------------------
-    print("\nStep 2. Groom - Data Pre-processing\n")
+    print("\n----------------------------------------")
+    print("Step 2. Groom - Data Pre-processing\n")
 
-    groom_dir = output_path + 'groomed/'
+    groom_dir = os.path.abspath(os.path.join(output_path, 'groomed'))
     if not os.path.exists(groom_dir):
         os.makedirs(groom_dir)
 
@@ -48,9 +54,11 @@ def Run_Pipeline(args):
     shape_names = []
 
     # Load the segmentations and perform grooming steps
-    for shape_filename in tqdm(shape_filenames, desc="Loading and Grooming Shapes"):
+    for i, shape_filename in enumerate(tqdm(shape_filenames, desc="Loading and Grooming Shapes")):
 
-        shape_name = shape_filename.split('/')[-1].replace(shape_ext, '')
+        dataset_id = dataset_ids[i]
+        base_shape_name = os.path.basename(shape_filename).replace(shape_ext, '')
+        shape_name = f"{dataset_id}_{base_shape_name}"
         shape_names.append(shape_name)
         
         shape_seg = sw.Image(shape_filename)
@@ -69,21 +77,23 @@ def Run_Pipeline(args):
     # -----------------------------------------------------------------------
     # Step 3: GROOM - Rigid Transformations
     # -----------------------------------------------------------------------
-    print("\nStep 3. Groom - Rigid Transformations\n")
+    print("\n----------------------------------------")
+    print("Step 3. Groom - Rigid Transformations\n")
 
     print("Finding reference image...")
     ref_index = sw.find_reference_image_index(shape_seg_list)
-    ref_seg = shape_seg_list[ref_index].write(groom_dir + 'reference.nii.gz')
+    ref_seg = shape_seg_list[ref_index]
     ref_name = shape_names[ref_index]
+    ref_seg.write(os.path.join(groom_dir, 'reference.nii.gz'))
     print("Reference found: " + ref_name)
     
     # Construct the directory and filename using os.path.join
-    transform_dir = os.path.join(groom_dir, 'rigid_transforms')
+    transform_dir = os.path.abspath(os.path.join(groom_dir, 'rigid_transforms'))
     if not os.path.exists(transform_dir):
         os.makedirs(transform_dir)
 
     rigid_transforms = []
-    for shape_seg, shape_name in tqdm(zip(shape_seg_list, shape_names), desc="Finding Alignment Transforms", total=len(shape_seg_list)):
+    for i, (shape_seg, shape_name) in enumerate(tqdm(zip(shape_seg_list, shape_names), desc="Finding Alignment Transforms", total=len(shape_seg_list))):
         iso_value = 0.5
         icp_iterations = 100
         rigid_transform = shape_seg.createRigidRegistrationTransform(
@@ -91,36 +101,42 @@ def Run_Pipeline(args):
         rigid_transform = sw.utils.getVTKtransform(rigid_transform)
         rigid_transforms.append(rigid_transform) 
         
-        # Ensure shape_name and ref_name are valid by using os.path.basename
-        shape_base_name = os.path.basename(shape_name)
-        ref_base_name = os.path.basename(ref_name)
-
         # Save the transform matrix
-        transform_filename = os.path.join(transform_dir, f'{shape_base_name}_to_{ref_base_name}_transform.txt')
+        transform_filename = os.path.join(transform_dir, f'{shape_name}_to_{ref_name}_transform.txt')
         np.savetxt(transform_filename, rigid_transform)
                 
         shape_seg.antialias(antialias_iterations).computeDT(0).gaussianBlur(1.5)
     
-    print("Saving distance transforms..")
-    groomed_files = sw.utils.save_images(
-        groom_dir + 'distance_transforms/', 
-        shape_seg_list, 
-        shape_names, 
-        extension='nii.gz', 
-        compressed=True, 
-        verbose=False
-        )
+    print("Saving distance transforms or meshes...\n")
+    # Decide the output directory based on mesh_mode
+    if args.mesh_mode:
+        output_subdir = 'meshes'
+        output_extension = '.vtk'
+    else:
+        output_subdir = 'distance_transforms'
+        output_extension = '.nii.gz'
+
+    output_dir = os.path.abspath(os.path.join(groom_dir, output_subdir))
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+
+    # Save the groomed files
+    groomed_files = []
+    for shape_seg, shape_name in zip(shape_seg_list, shape_names):
+        output_filename = os.path.join(output_dir, shape_name + output_extension)
+        shape_seg.write(output_filename)
+        groomed_files.append(output_filename)
 
     # Adjust the input for mesh creation
     domain_type, groomed_files = sw.data.get_optimize_input(groomed_files, args.mesh_mode)
-
-    print("\nStep 4. Optimize - Particle Based Optimization\n")
         
     # -----------------------------------------------------------------------
     # Step 4: OPTIMIZE - Particle Based Optimization
     # -----------------------------------------------------------------------
-
-    project_location = output_path
+    print("\n----------------------------------------")
+    print("Step 4. Optimize - Particle Based Optimization\n")
+    
+    project_location = output_path  # Absolute path already ensured
     if not os.path.exists(project_location):
         os.makedirs(project_location)
     
@@ -129,10 +145,12 @@ def Run_Pipeline(args):
     for i in tqdm(range(len(shape_seg_list)), desc="Setting Up Subjects"):
         subject = sw.Subject()
         subject.set_number_of_domains(number_domains)
-        rel_seg_files = sw.utils.get_relative_paths([os.getcwd() + '/' + shape_filenames[i]], project_location)
-        subject.set_original_filenames(rel_seg_files)
-        rel_groom_files = sw.utils.get_relative_paths([os.getcwd() + '/' + groomed_files[i]], project_location)
-        subject.set_groomed_filenames(rel_groom_files)
+        abs_shape_filename = os.path.abspath(shape_filenames[i])
+        # Use absolute paths
+        subject.set_original_filenames([abs_shape_filename])
+        # Use the adjusted groomed_files[i] with absolute paths
+        groomed_file = os.path.abspath(groomed_files[i])
+        subject.set_groomed_filenames([groomed_file])
         transform = [rigid_transforms[i].flatten()]
         subject.set_groomed_transforms(transform)
         subjects.append(subject)
@@ -171,11 +189,12 @@ def Run_Pipeline(args):
         parameters.set(key, sw.Variant([parameter_dictionary[key]]))
     
     project.set_parameters("optimize", parameters)
-    spreadsheet_file = output_path + dataset_name + "_" + args.option_set + ".swproj"
+    spreadsheet_file = os.path.join(output_path, dataset_name + "_" + args.option_set + ".swproj")
     project.save(spreadsheet_file)
 
-    optimize_cmd = ('shapeworks optimize --progress --name ' + spreadsheet_file).split()
-    subprocess.check_call(optimize_cmd)
+    # Ensure that the shapeworks command is executed in the correct directory
+    optimize_cmd = ['shapeworks', 'optimize', '--progress', '--name', spreadsheet_file]
+    subprocess.check_call(optimize_cmd, cwd=project_location)
 
     sw.utils.check_results(args, spreadsheet_file)
     
@@ -187,9 +206,10 @@ def Run_Pipeline(args):
     # -----------------------------------------------------------------------
     # Step 5: Open ShapeWorks
     # -----------------------------------------------------------------------
-    print("\nStep 5: Analysis - Launch ShapeWorksStudio")
+    print("\n----------------------------------------")
+    print("Step 5: Analysis - Launch ShapeWorks\n")
     
-    analyze_cmd = ('ShapeWorksStudio ' + spreadsheet_file).split()
+    analyze_cmd = ['ShapeWorksStudio', spreadsheet_file]
     subprocess.check_call(analyze_cmd)
 
 
