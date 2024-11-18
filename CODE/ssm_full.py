@@ -17,10 +17,11 @@ def Run_Pipeline(args):
     print("\n----------------------------------------")
     print("Step 1. Acquire Data\n")
 
-    dataset_name = "RF_FULGUR_ALL"
+    dataset_name = "RF_FULGUR_FULL"
     dataset_paths = [
         ('./CODE/DATA/RF_FULGUR', 'RF'),
         ('./CODE/DATA/RF_FULGUR_PRED', 'RFP'),
+        # ('./CODE/DATA/RF_DIASEM', 'RFDIA'),
     ]
     output_path = os.path.abspath(os.path.join("./CODE/OUTPUT/", dataset_name))
     shape_ext = '.nii.gz'
@@ -85,7 +86,7 @@ def Run_Pipeline(args):
     ref_seg = shape_seg_list[ref_index]
     ref_name = shape_names[ref_index]
     ref_seg.write(os.path.join(groom_dir, 'reference.nii.gz'))
-    print("Reference found: " + ref_name)
+    print("Reference found: " + ref_name + "\n")
     
     # Construct the directory and filename using os.path.join
     transform_dir = os.path.abspath(os.path.join(groom_dir, 'rigid_transforms'))
