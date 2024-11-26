@@ -15,7 +15,7 @@ def plot_all_meshes_with_particles_aligned(dataset_folder, dataset_name):
     centers = []
     for mesh_file in mesh_files:
         mesh_name = os.path.basename(mesh_file)
-        particle_file = os.path.join(particles_dir, os.path.splitext(mesh_name)[0] + '_local.particles')
+        particle_file = os.path.join(particles_dir, os.path.splitext(mesh_name)[0] + '.nii_local.particles')
         if not os.path.exists(particle_file):
             print(f"Particle file {particle_file} does not exist. Skipping this mesh.")
             continue
@@ -66,7 +66,7 @@ def plot_mesh_with_particles(dataset_folder, dataset_name, N):
         return
     mesh_file = mesh_files[N]
     mesh_name = os.path.basename(mesh_file)
-    particle_file = os.path.join(particles_dir, os.path.splitext(mesh_name)[0] + '_local.particles')
+    particle_file = os.path.join(particles_dir, os.path.splitext(mesh_name)[0] + '.nii_local.particles')
     if not os.path.exists(particle_file):
         print(f"Particle file {particle_file} does not exist.")
         return
@@ -79,6 +79,6 @@ def plot_mesh_with_particles(dataset_folder, dataset_name, N):
     plotter.show()
 
 if __name__ == "__main__":
-    DATASET = "RF_FULGUR_FULL"
+    DATASET = "RF_TEST_2"
     DATA_DIR = os.path.join("CODE", "OUTPUT", DATASET)
     plot_all_meshes_with_particles_aligned(DATA_DIR, DATASET)
