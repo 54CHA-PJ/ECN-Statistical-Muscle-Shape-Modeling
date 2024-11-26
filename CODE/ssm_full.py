@@ -17,10 +17,10 @@ def Run_Pipeline(args):
     print("\n----------------------------------------")
     print("Step 1. Acquire Data\n")
 
-    dataset_name = "RF_FULGUR_FULL"
+    dataset_name = "RF_FULGUR_DT"
     dataset_paths = [
         ('./CODE/DATA/RF_FULGUR', 'RF'),
-        ('./CODE/DATA/RF_FULGUR_PRED', 'RFP'),
+        # ('./CODE/DATA/RF_FULGUR_PRED', 'RFP'),
         # ('./CODE/DATA/RF_DIASEM', 'RFDIA'),
     ]
     output_path = os.path.abspath(os.path.join("./CODE/OUTPUT/", dataset_name))
@@ -218,7 +218,7 @@ if __name__ == "__main__":
     class Args:
         tiny_test = False
         use_single_scale = 0
-        mesh_mode = True
+        mesh_mode = False
         num_subsample = 10
         use_subsample = False
         option_set = 'default'
