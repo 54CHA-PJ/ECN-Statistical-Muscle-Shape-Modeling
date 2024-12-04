@@ -14,11 +14,11 @@ def Run_Pipeline(args):
     # -----------------------------------------------------------------------
     
     # DATA INPUT
-    DATASET_NAME = "RF_FULGUR_MESH"
+    DATASET_NAME = "RF_FULGUR_FULL_DT"
     DATASET_PATHS = [
         # KEEP THIS COMMENTS
         ('./CODE/DATA/RF_FULGUR', 'RF'),
-        # ('./CODE/DATA/RF_FULGUR_PRED', 'RFP'),
+        ('./CODE/DATA/RF_FULGUR_PRED', 'RFP'),
         # ('./CODE/DATA/RF_DIASEM', 'RFDIA'),
         # ('./CODE/DATA/RF_FULGUR_SAMPLE', 'TEST1'),
         # ('./CODE/DATA/RF_FULGUR_SAMPLE_2', 'TEST2'),
@@ -215,12 +215,11 @@ def Run_Pipeline(args):
     minutes, seconds = divmod(total_time, 60)
     print("Total time: {} minutes {:.2f} seconds".format(int(minutes), seconds))
 
-
 if __name__ == "__main__":
     class Args:
         tiny_test = False
         use_single_scale = 0
-        mesh_mode = True
+        mesh_mode = False
         num_subsample = 10
         use_subsample = False
         option_set = 'default'
