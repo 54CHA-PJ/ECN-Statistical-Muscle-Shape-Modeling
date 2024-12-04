@@ -8,33 +8,44 @@ import time
 from tqdm import tqdm
 
 def Run_Pipeline(args):
+    
+    # -----------------------------------------------------------------------
+    # CONSTANTS
+    # -----------------------------------------------------------------------
+    
+    # DATA INPUT
+    DATASET_NAME = "RF_FULGUR_MESH"
+    DATASET_PATHS = [
+        # KEEP THIS COMMENTS
+        ('./CODE/DATA/RF_FULGUR', 'RF'),
+        # ('./CODE/DATA/RF_FULGUR_PRED', 'RFP'),
+        # ('./CODE/DATA/RF_DIASEM', 'RFDIA'),
+        # ('./CODE/DATA/RF_FULGUR_SAMPLE', 'TEST1'),
+        # ('./CODE/DATA/RF_FULGUR_SAMPLE_2', 'TEST2'),
+        # ('./CODE/DATA/RF_DIASEM_SAMPLE', 'TESTDIA'),
+    ]
+    SHAPE_EXT = '.nii.gz'
+    
+    OUTPUT_PATH = os.path.abspath(os.path.join("./CODE/OUTPUT/", DATASET_NAME))
+    PARTICLES_DIR = os.path.abspath(os.path.join(OUTPUT_PATH, f'{DATASET_NAME}_default_particles'))
+    PCA_OUTPUT_DIR = os.path.abspath(os.path.join(OUTPUT_PATH, 'PCA_results'))
 
     start_time = time.time()    
-
+    
     # -----------------------------------------------------------------------
     # Step 1: ACQUIRE DATA
     # -----------------------------------------------------------------------
     print("\n----------------------------------------")
     print("Step 1. Acquire Data\n")
 
-    dataset_name = "RF_FULGUR_DT"
-    dataset_paths = [
-        ('./CODE/DATA/RF_FULGUR', 'RF'),
-        # ('./CODE/DATA/RF_FULGUR_PRED', 'RFP'),
-        # ('./CODE/DATA/RF_DIASEM', 'RFDIA'),
-    ]
-    output_path = os.path.abspath(os.path.join("./CODE/OUTPUT/", dataset_name))
-    shape_ext = '.nii.gz'
+    if not os.path.exists(OUTPUT_PATH):
+        os.makedirs(OUTPUT_PATH)
 
-    if not os.path.exists(output_path):
-        os.makedirs(output_path)
-
-    # Load the .nii.gz files
     shape_filenames = []  # List of filenames
     dataset_ids = []      # Corresponding dataset identifiers
 
-    for data_path, dataset_id in dataset_paths:
-        files = sorted(glob.glob(os.path.join(data_path, '*' + shape_ext)))
+    for data_path, dataset_id in DATASET_PATHS:
+        files = sorted(glob.glob(os.path.join(data_path, '*' + SHAPE_EXT)))
         shape_filenames.extend(files)
         dataset_ids.extend([dataset_id]*len(files))
 
@@ -46,7 +57,7 @@ def Run_Pipeline(args):
     print("\n----------------------------------------")
     print("Step 2. Groom - Data Pre-processing\n")
 
-    groom_dir = os.path.abspath(os.path.join(output_path, 'groomed'))
+    groom_dir = os.path.abspath(os.path.join(OUTPUT_PATH, 'groomed'))
     if not os.path.exists(groom_dir):
         os.makedirs(groom_dir)
 
@@ -58,7 +69,7 @@ def Run_Pipeline(args):
     for i, shape_filename in enumerate(tqdm(shape_filenames, desc="Loading and Grooming Shapes")):
 
         dataset_id = dataset_ids[i]
-        base_shape_name = os.path.basename(shape_filename).replace(shape_ext, '')
+        base_shape_name = os.path.basename(shape_filename).replace(SHAPE_EXT, '')
         shape_name = f"{dataset_id}_{base_shape_name}"
         shape_names.append(shape_name)
         
@@ -117,14 +128,14 @@ def Run_Pipeline(args):
         output_subdir = 'distance_transforms'
         output_extension = '.nii.gz'
 
-    output_dir = os.path.abspath(os.path.join(groom_dir, output_subdir))
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
+    OUTPUT_DIR = os.path.abspath(os.path.join(groom_dir, output_subdir))
+    if not os.path.exists(OUTPUT_DIR):
+        os.makedirs(OUTPUT_DIR)
 
     # Save the groomed files
     groomed_files = []
     for shape_seg, shape_name in zip(shape_seg_list, shape_names):
-        output_filename = os.path.join(output_dir, shape_name + output_extension)
+        output_filename = os.path.join(OUTPUT_DIR, shape_name + output_extension)
         shape_seg.write(output_filename)
         groomed_files.append(output_filename)
 
@@ -137,7 +148,7 @@ def Run_Pipeline(args):
     print("\n----------------------------------------")
     print("Step 4. Optimize - Particle Based Optimization\n")
     
-    project_location = output_path  # Absolute path already ensured
+    project_location = OUTPUT_PATH  # Absolute path already ensured
     if not os.path.exists(project_location):
         os.makedirs(project_location)
     
@@ -190,7 +201,7 @@ def Run_Pipeline(args):
         parameters.set(key, sw.Variant([parameter_dictionary[key]]))
     
     project.set_parameters("optimize", parameters)
-    spreadsheet_file = os.path.join(output_path, dataset_name + "_" + args.option_set + ".swproj")
+    spreadsheet_file = os.path.join(OUTPUT_PATH, DATASET_NAME + "_" + args.option_set + ".swproj")
     project.save(spreadsheet_file)
 
     # Ensure that the shapeworks command is executed in the correct directory
@@ -204,21 +215,12 @@ def Run_Pipeline(args):
     minutes, seconds = divmod(total_time, 60)
     print("Total time: {} minutes {:.2f} seconds".format(int(minutes), seconds))
 
-    # -----------------------------------------------------------------------
-    # Step 5: Open ShapeWorks
-    # -----------------------------------------------------------------------
-    print("\n----------------------------------------")
-    print("Step 5: Analysis - Launch ShapeWorks\n")
-    
-    analyze_cmd = ['ShapeWorksStudio', spreadsheet_file]
-    subprocess.check_call(analyze_cmd)
-
 
 if __name__ == "__main__":
     class Args:
         tiny_test = False
         use_single_scale = 0
-        mesh_mode = False
+        mesh_mode = True
         num_subsample = 10
         use_subsample = False
         option_set = 'default'

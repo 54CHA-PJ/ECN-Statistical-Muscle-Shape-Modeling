@@ -79,6 +79,6 @@ def plot_mesh_with_particles(dataset_folder, dataset_name, N):
     plotter.show()
 
 if __name__ == "__main__":
-    DATASET = "RF_FULGUR_FULL"
+    DATASET = "RF_FULGUR_MESH"
     DATA_DIR = os.path.join("CODE", "OUTPUT", DATASET)
     plot_all_meshes_with_particles_aligned(DATA_DIR, DATASET)
