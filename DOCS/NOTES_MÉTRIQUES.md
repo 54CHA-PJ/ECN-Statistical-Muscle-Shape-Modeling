@@ -4,6 +4,10 @@ Un modèle PCA est construit sur toutes les autres formes.
 La forme exclue est reconstruite à l’aide du modèle partiel.
 L’erreur de reconstruction est calculée entre la forme réelle et la forme reconstruite.
 
+---
+
+### 1. Métriques d'Erreur
+
 **Erreur de généralisation :**
 
 1) Charger les formes (fichiers .particles).
@@ -43,3 +47,36 @@ Obtenir un vecteur d’erreurs (erreur i-ème associée à la forme synthétique
 Calculer l’erreur associée à l’ensemble des formes (toutes les formes réelles moins une forme réelle j-ème) comme la moyenne de ce vecteur d’erreurs.
 
 5) Répéter cette procédure (LOO) pour chaque forme réelle, puis calculer la moyenne.
+
+---
+
+### 2. Implémentation sur ShapeWorks
+
+**Aller dans le dossier `Program Files\ShapeWorks\Libs\Particles`**
+
+Les métriques d'erreur sont définies dans le fichier `ShapeEvaluation.cpp` sous les fonctions:
+
+- `compute_full_compactness`
+- `compute_full_specificity`
+- `compute_full_generalization`
+
+Il existe des alternatives nommées:
+
+- `compute_compactness`
+- `compute_specificity`
+- `compute_generalization`
+
+Leur différence est à étudier...
+
+Ces fonctions sont appellées dans le fichier `ParticleShapeStatistics.cpp` sous les fonctions:
+
+- `get_compactness`
+- `get_specificity`
+- `get_generalization`
+
+**Aller dans le dossier `Program Files\ShapeWorks\Libs\Analyze`**
+
+Ces fonctions sont appellées dans le fichier `Analyze.cpp`, et le graphique est tracé dans la fonction `create_charts`.
+
+![alt Shapeworks_Create_Charts](shapeworks_create_charts.png)
+
