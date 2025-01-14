@@ -14,11 +14,11 @@ def Run_Pipeline(args):
     # -----------------------------------------------------------------------
     
     # DATA INPUT
-    DATASET_NAME = "RF_FULGUR_FULL_DT"
+    DATASET_NAME = "RF_FULGUR_M_MESH"
     DATASET_PATHS = [
         # KEEP THIS COMMENTS
-        ('./CODE/DATA/RF_FULGUR', 'RF'),
-        ('./CODE/DATA/RF_FULGUR_PRED', 'RFP'),
+        ('./CODE/DATA/RF_FULGUR_M', 'RF'),
+        # ('./CODE/DATA/RF_FULGUR_PRED', 'RFP'),
         # ('./CODE/DATA/RF_DIASEM', 'RFDIA'),
         # ('./CODE/DATA/RF_FULGUR_SAMPLE', 'TEST1'),
         # ('./CODE/DATA/RF_FULGUR_SAMPLE_2', 'TEST2'),
@@ -82,7 +82,7 @@ def Run_Pipeline(args):
         antialias_iterations = 30
         iso_spacing = [1, 1, 1]
         shape_seg.antialias(antialias_iterations).resample(iso_spacing, sw.InterpolationType.Linear).binarize()
-        pad_size = 5
+        pad_size = 10 # Changed. Original : 5
         pad_value = 0
         shape_seg.pad(pad_size, pad_value)
         
@@ -186,7 +186,7 @@ def Run_Pipeline(args):
         "procrustes_interval": 0,
         "procrustes_scaling": 0,
         "save_init_splits": 0,
-        "verbosity": 0
+        "verbosity": 0 # Changed. Original : 0
     }
 
     if args.tiny_test:
@@ -219,7 +219,7 @@ if __name__ == "__main__":
     class Args:
         tiny_test = False
         use_single_scale = 0
-        mesh_mode = False
+        mesh_mode = True        # False doesn't work for big data...
         num_subsample = 10
         use_subsample = False
         option_set = 'default'
