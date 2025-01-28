@@ -52,7 +52,9 @@ Calculer l’erreur associée à l’ensemble des formes (toutes les formes rée
 
 ### 2. Implémentation sur ShapeWorks
 
-**Aller dans le dossier `Program Files\ShapeWorks\Libs\Particles`**
+Créez un clone du code source de Shapeworks [ici]()
+
+**Aller dans le dossier `ShapeWorks\Libs\Particles`**
 
 Les métriques d'erreur sont définies dans le fichier `ShapeEvaluation.cpp` sous les fonctions:
 
