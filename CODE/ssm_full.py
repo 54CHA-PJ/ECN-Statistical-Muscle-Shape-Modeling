@@ -82,7 +82,7 @@ def Run_Pipeline(args):
         antialias_iterations = 30
         iso_spacing = [1, 1, 1]
         shape_seg.antialias(antialias_iterations).resample(iso_spacing, sw.InterpolationType.Linear).binarize()
-        pad_size = 10 # Changed. Original : 5
+        pad_size = 10
         pad_value = 0
         shape_seg.pad(pad_size, pad_value)
         
