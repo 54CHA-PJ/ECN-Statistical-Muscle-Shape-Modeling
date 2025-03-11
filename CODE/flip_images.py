@@ -73,7 +73,7 @@ def flip_and_create_dataset(dataset_path, files_to_flip):
 # Example usage:
 if __name__ == "__main__":
     # Define the dataset path
-    DATASET_PATH = "./CODE/DATA/RF_FULGUR"
+    DATASET_PATH = "./CODE/DATA/RF_FULGUR_PRED"
     # Define the list of files to flip (full paths)
     # For example, all files containing "left" in their filename
     all_images = glob.glob(os.path.join(DATASET_PATH, "*.nii.gz"))

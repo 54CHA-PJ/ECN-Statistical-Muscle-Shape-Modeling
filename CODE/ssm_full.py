@@ -14,15 +14,13 @@ def Run_Pipeline(args):
     # -----------------------------------------------------------------------
     
     # DATA INPUT
-    DATASET_NAME = "RF_FULGUR_M_MESH"
+    DATASET_NAME = "RF_FULGUR_FULL_M"
     DATASET_PATHS = [
         # KEEP THIS COMMENTS
-        ('./CODE/DATA/RF_FULGUR_M', 'RF'),
+        #('./CODE/DATA/RF_FULGUR_M', 'RF'),
         # ('./CODE/DATA/RF_FULGUR_PRED', 'RFP'),
         # ('./CODE/DATA/RF_DIASEM', 'RFDIA'),
-        # ('./CODE/DATA/RF_FULGUR_SAMPLE', 'TEST1'),
-        # ('./CODE/DATA/RF_FULGUR_SAMPLE_2', 'TEST2'),
-        # ('./CODE/DATA/RF_DIASEM_SAMPLE', 'TESTDIA'),
+        ('./CODE/DATA/RF_FULGUR_FULL_M', 'FULGUR_ALLM'),
     ]
     SHAPE_EXT = '.nii.gz'
     

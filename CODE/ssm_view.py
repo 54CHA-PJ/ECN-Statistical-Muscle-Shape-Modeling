@@ -77,10 +77,25 @@ def plot_mesh_with_particles(dataset_folder, dataset_name, N):
     plotter.add_points(particles, color='red', point_size=5, render_points_as_spheres=True)
     plotter.add_title(f"Mesh: {mesh_name}")
     plotter.show()
+    
+def plot_mesh_without_particles(dataset_folder, dataset_name, N):
+    meshes_dir = os.path.join(dataset_folder, 'groomed', 'meshes')
+    mesh_files = sorted(glob.glob(os.path.join(meshes_dir, '*.vtk')))
+    if N < 0 or N >= len(mesh_files):
+        print(f"Invalid mesh number N. There are {len(mesh_files)} meshes.")
+        return
+    mesh_file = mesh_files[N]
+    mesh_name = os.path.basename(mesh_file)
+    mesh = pv.read(mesh_file)
+    plotter = pv.Plotter()
+    plotter.add_mesh(mesh, color='lightgray', opacity=1)
+    plotter.add_title(f"Mesh: {mesh_name}")
+    plotter.show()
 
 if __name__ == "__main__":
     DATASET = "RF_FULGUR_M_MESH"
     DATA_DIR = os.path.join("CODE", "OUTPUT", DATASET)
-    plot_all_meshes_with_particles_aligned(DATA_DIR, DATASET)
+    plot_mesh_without_particles(DATA_DIR, DATASET,13)
+    # plot_all_meshes_with_particles_aligned(DATA_DIR, DATASET)
     # plot_mesh_with_particles(DATA_DIR, DATASET, 9)
     

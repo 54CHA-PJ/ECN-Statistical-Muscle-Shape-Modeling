@@ -1,3 +1,5 @@
 DATA/*
 OUTPUT/*
 OUTPUT_PIPELINE/*
+OUTPUT_DB/*
+__pycache__/*
